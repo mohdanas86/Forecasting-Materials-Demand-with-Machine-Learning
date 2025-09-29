@@ -1,0 +1,121 @@
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env*/
+backend/venv/
+frontend/node_modules/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.tmp/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ML Model artifacts (large files that should be generated, not committed)
+ml/models/*.pkl
+ml/models/*.joblib
+ml/models/*.h5
+ml/models/*.pb
+ml/models/*.onnx
+ml/models/*.pt
+ml/models/*.pth
+
+# Large data files that exceed GitHub's 100MB limit (generate locally)
+data/features/features.csv
+data/features/*.csv
+data/synthetic/*.csv
+ml/outputs/*.csv
+
+# Keep only essential sample files
+!data/inventory.csv
+!data/synthetic/README.md
+!ml/outputs/README.md
+
+# Docker
+.dockerignore
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/workflows/*.log
+
+# Local development files
+*.sqlite3
+*.db
+database.db
+db.sqlite3
+
+# Backup files
+*.bak
+*.backup
+*~

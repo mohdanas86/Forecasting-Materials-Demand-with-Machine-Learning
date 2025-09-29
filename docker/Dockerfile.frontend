@@ -1,0 +1,18 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY ../frontend/package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy source code
+COPY ../frontend .
+
+# Expose port for Vite dev server
+EXPOSE 5173
+
+# Run development server
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

@@ -1,0 +1,10 @@
+{
+  "rmse": 496.1831429068014,
+  "mape": 347.96925145933744,
+  "mae": 241.64741300363738,
+  "median_absolute_error": 82.00334085907748,
+  "accuracy_within_10pct": 6.593484419263457,
+  "accuracy_within_20pct": 13.54343720491029,
+  "total_predictions": 127080,
+  "valid_predictions": 127080
+}

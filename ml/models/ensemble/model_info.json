@@ -1,0 +1,21 @@
+{
+  "model_type": "Ensemble Linear Regression",
+  "base_models": [
+    "Prophet",
+    "LightGBM"
+  ],
+  "target_variable": "quantity",
+  "features": [
+    "p10",
+    "p50",
+    "p90",
+    "predicted_quantity"
+  ],
+  "coefficients": {
+    "p10": -0.14111036514976308,
+    "p50": 0.3683453986277945,
+    "p90": 0.368345398627806,
+    "predicted_quantity": 0.3683453986278061
+  },
+  "intercept": -257.2863209573122
+}

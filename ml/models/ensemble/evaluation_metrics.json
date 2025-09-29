@@ -1,0 +1,8 @@
+{
+  "rmse": 495.8396215140094,
+  "mape": 334.9482926987824,
+  "mae": 239.790122852058,
+  "interval_coverage_80pct": 89.71986150456405,
+  "total_forecasts": 127080,
+  "valid_forecasts": 127080
+}
