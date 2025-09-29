@@ -1,0 +1,44 @@
+{
+  "model_type": "lightgbm_location_based",
+  "target": "quantity",
+  "features_used": [
+    "location",
+    "tower_type",
+    "substation_type",
+    "month",
+    "quarter",
+    "seasonal_multiplier",
+    "monsoon_flag",
+    "material_id"
+  ],
+  "categorical_features": [
+    "location",
+    "tower_type",
+    "substation_type",
+    "material_id"
+  ],
+  "metrics": {
+    "train": {
+      "mae": 376.63099734797044,
+      "rmse": 737.2811655378865,
+      "r2": 0.01642369707700797
+    },
+    "test": {
+      "mae": 380.6074659688278,
+      "rmse": 752.7266205589027,
+      "r2": 0.01461849869213061
+    }
+  },
+  "feature_importance": {
+    "seasonal_multiplier": 22260214328.0,
+    "monsoon_flag": 9965350456.0,
+    "month": 4527323627.0,
+    "location": 1166656026.0,
+    "tower_type": 393380865.0,
+    "substation_type": 374557527.0,
+    "quarter": 84087745.0,
+    "material_id": 0.0
+  },
+  "training_date": "2025-09-29T22:34:16.647730",
+  "model_path": "ml\\models\\location\\location_model.pkl"
+}

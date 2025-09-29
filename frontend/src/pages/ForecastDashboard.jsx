@@ -22,10 +22,21 @@ const ForecastDashboard = () => {
   const [error, setError] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [selectedPeriod, setSelectedPeriod] = useState("all");
+  const [selectedLocation, setSelectedLocation] = useState("");
+  const [selectedTowerType, setSelectedTowerType] = useState("");
+  const [selectedSubstationType, setSelectedSubstationType] = useState("");
+  const [budgetRange, setBudgetRange] = useState([0, 50000000]); // Min and max budget range
 
   useEffect(() => {
     loadForecastData();
-  }, [selectedMaterial, selectedPeriod]);
+  }, [
+    selectedMaterial,
+    selectedPeriod,
+    selectedLocation,
+    selectedTowerType,
+    selectedSubstationType,
+    budgetRange,
+  ]);
 
   const loadForecastData = async () => {
     try {
@@ -36,6 +47,12 @@ const ForecastDashboard = () => {
       const params = {};
       if (selectedMaterial) params.material_id = selectedMaterial;
       if (selectedPeriod !== "all") params.period = selectedPeriod;
+      if (selectedLocation) params.location = selectedLocation;
+      if (selectedTowerType) params.tower_type = selectedTowerType;
+      if (selectedSubstationType)
+        params.substation_type = selectedSubstationType;
+      if (budgetRange[0] > 0) params.budget_min = budgetRange[0];
+      if (budgetRange[1] < 50000000) params.budget_max = budgetRange[1];
 
       const forecastResponse = await apiService.getForecast(params);
       setForecastData(forecastResponse.data.forecasts);
@@ -61,33 +78,47 @@ const ForecastDashboard = () => {
     const chartData = [];
 
     forecastData.forEach((forecast, index) => {
-      // Create sample historical data points leading up to forecast
-      const baseDate = new Date(forecast.forecast_date);
-      for (let i = -30; i <= 0; i++) {
-        const date = new Date(baseDate);
-        date.setDate(date.getDate() + i);
+      try {
+        // Create sample historical data points leading up to forecast
+        const baseDate = new Date(forecast.date);
+        if (isNaN(baseDate.getTime())) {
+          console.warn(
+            `Invalid date for forecast ${forecast.material_id}: ${forecast.date}`
+          );
+          return; // Skip this forecast if date is invalid
+        }
 
+        for (let i = -30; i <= 0; i++) {
+          const date = new Date(baseDate);
+          date.setDate(date.getDate() + i);
+
+          chartData.push({
+            date: date.toISOString().split("T")[0],
+            material_id: forecast.material_id,
+            historical: Math.max(0, forecast.p50 * (0.8 + Math.random() * 0.4)), // Simulated historical data
+            forecast_p10: null,
+            forecast_p50: null,
+            forecast_p90: null,
+            is_forecast: false,
+          });
+        }
+
+        // Add forecast data point
         chartData.push({
-          date: date.toISOString().split("T")[0],
+          date: baseDate.toISOString().split("T")[0],
           material_id: forecast.material_id,
-          historical: Math.max(0, forecast.p50 * (0.8 + Math.random() * 0.4)), // Simulated historical data
-          forecast_p10: null,
-          forecast_p50: null,
-          forecast_p90: null,
-          is_forecast: false,
+          historical: null,
+          forecast_p10: forecast.p10,
+          forecast_p50: forecast.p50,
+          forecast_p90: forecast.p90,
+          is_forecast: true,
         });
+      } catch (error) {
+        console.error(
+          `Error processing forecast data for ${forecast.material_id}:`,
+          error
+        );
       }
-
-      // Add forecast data point
-      chartData.push({
-        date: forecast.forecast_date.split("T")[0],
-        material_id: forecast.material_id,
-        historical: null,
-        forecast_p10: forecast.p10,
-        forecast_p50: forecast.p50,
-        forecast_p90: forecast.p90,
-        is_forecast: true,
-      });
     });
 
     return chartData;
@@ -156,7 +187,7 @@ const ForecastDashboard = () => {
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex flex-wrap gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Material ID
@@ -164,7 +195,7 @@ const ForecastDashboard = () => {
               <select
                 value={selectedMaterial}
                 onChange={(e) => setSelectedMaterial(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Materials</option>
                 {[...new Set(forecastData.map((f) => f.material_id))].map(
@@ -184,7 +215,7 @@ const ForecastDashboard = () => {
               <select
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Time</option>
                 <option value="week">Next Week</option>
@@ -192,6 +223,154 @@ const ForecastDashboard = () => {
                 <option value="quarter">Next Quarter</option>
               </select>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location
+              </label>
+              <select
+                value={selectedLocation}
+                onChange={(e) => setSelectedLocation(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Locations</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Mumbai">Mumbai</option>
+                <option value="Kolkata">Kolkata</option>
+                <option value="Chennai">Chennai</option>
+                <option value="Hyderabad">Hyderabad</option>
+                <option value="Pune">Pune</option>
+                <option value="Ahmedabad">Ahmedabad</option>
+                <option value="Jaipur">Jaipur</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tower Type
+              </label>
+              <select
+                value={selectedTowerType}
+                onChange={(e) => setSelectedTowerType(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Tower Types</option>
+                <option value="Lattice Tower">Lattice Tower</option>
+                <option value="Tubular Tower">Tubular Tower</option>
+                <option value="Monopole Tower">Monopole Tower</option>
+                <option value="Guyed Tower">Guyed Tower</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Substation Type
+              </label>
+              <select
+                value={selectedSubstationType}
+                onChange={(e) => setSelectedSubstationType(e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Substation Types</option>
+                <option value="AIS Substation">AIS Substation</option>
+                <option value="GIS Substation">GIS Substation</option>
+                <option value="Hybrid Substation">Hybrid Substation</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-2 lg:col-span-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Budget Range (₹)
+              </label>
+              <div className="px-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="50000000"
+                  step="1000000"
+                  value={budgetRange[0]}
+                  onChange={(e) =>
+                    setBudgetRange([parseInt(e.target.value), budgetRange[1]])
+                  }
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max="50000000"
+                  step="1000000"
+                  value={budgetRange[1]}
+                  onChange={(e) =>
+                    setBudgetRange([budgetRange[0], parseInt(e.target.value)])
+                  }
+                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer mt-2"
+                />
+                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                  <span>₹{(budgetRange[0] / 100000).toFixed(0)}L</span>
+                  <span>₹{(budgetRange[1] / 100000).toFixed(0)}L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Filters Display */}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {selectedMaterial && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Material: {selectedMaterial}
+                <button
+                  onClick={() => setSelectedMaterial("")}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-blue-400 hover:bg-blue-200 hover:text-blue-500"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {selectedLocation && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Location: {selectedLocation}
+                <button
+                  onClick={() => setSelectedLocation("")}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-green-400 hover:bg-green-200 hover:text-green-500"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {selectedTowerType && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                Tower: {selectedTowerType}
+                <button
+                  onClick={() => setSelectedTowerType("")}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-purple-400 hover:bg-purple-200 hover:text-purple-500"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {selectedSubstationType && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                Substation: {selectedSubstationType}
+                <button
+                  onClick={() => setSelectedSubstationType("")}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-orange-400 hover:bg-orange-200 hover:text-orange-500"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {(budgetRange[0] > 0 || budgetRange[1] < 50000000) && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                Budget: ₹{(budgetRange[0] / 100000).toFixed(0)}L - ₹
+                {(budgetRange[1] / 100000).toFixed(0)}L
+                <button
+                  onClick={() => setBudgetRange([0, 50000000])}
+                  className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full text-red-400 hover:bg-red-200 hover:text-red-500"
+                >
+                  ×
+                </button>
+              </span>
+            )}
           </div>
         </div>
 
@@ -223,10 +402,14 @@ const ForecastDashboard = () => {
           </div>
           <div className="bg-white rounded-lg shadow-md p-6">
             <h3 className="text-lg font-semibold text-gray-900">
-              Materials Needing Orders
+              Total Procurement Value
             </h3>
             <p className="text-3xl font-bold text-red-600">
-              {summaryData.procurement?.materials_needing_orders || 0}
+              ₹
+              {(
+                summaryData.procurement?.total_procurement_value / 100000
+              )?.toFixed(1) || "0"}
+              L
             </p>
           </div>
         </div>
@@ -288,17 +471,29 @@ const ForecastDashboard = () => {
         {/* Procurement Metrics Table */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            Procurement Recommendations
+            Procurement Recommendations & Forecast Data
           </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Material
+                    Material ID
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Current Stock
+                    Project ID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    P10
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    P50
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    P90
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Safety Stock
@@ -307,48 +502,67 @@ const ForecastDashboard = () => {
                     Reorder Point
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Recommended Order
+                    Recommended Qty
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Recommendations
+                    Order Date
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {forecastData.map((forecast) => (
-                  <tr key={forecast.material_id}>
+                  <tr key={`${forecast.material_id}-${forecast.date}`}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {forecast.material_id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {forecast.current_stock?.toFixed(1) || "N/A"}
+                      {forecast.project_id || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {forecast.safety_stock?.toFixed(1) || "N/A"}
+                      {(() => {
+                        try {
+                          const date = new Date(forecast.date);
+                          return isNaN(date.getTime())
+                            ? "Invalid Date"
+                            : date.toLocaleDateString();
+                        } catch {
+                          return "Invalid Date";
+                        }
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {forecast.reorder_point?.toFixed(1) || "N/A"}
+                      {forecast.p10?.toFixed(2) || "0.00"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {forecast.recommended_order_qty?.toFixed(1) || "N/A"}
+                      {forecast.p50?.toFixed(2) || "0.00"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      <div className="space-y-1">
-                        {forecast.recommendations?.map((rec, index) => (
-                          <div
-                            key={index}
-                            className={`text-xs px-2 py-1 rounded ${
-                              rec.type === "critical"
-                                ? "bg-red-100 text-red-800"
-                                : rec.type === "urgent"
-                                ? "bg-orange-100 text-orange-800"
-                                : "bg-blue-100 text-blue-800"
-                            }`}
-                          >
-                            {rec.message}
-                          </div>
-                        ))}
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {forecast.p90?.toFixed(2) || "0.00"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {forecast.safety_stock?.toFixed(2) || "0.00"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {forecast.reorder_point?.toFixed(2) || "0.00"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {forecast.recommended_qty?.toFixed(2) || "0.00"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {forecast.recommended_order_date
+                        ? (() => {
+                            try {
+                              const date = new Date(
+                                forecast.recommended_order_date
+                              );
+                              return isNaN(date.getTime())
+                                ? "Invalid Date"
+                                : date.toLocaleDateString();
+                            } catch {
+                              return "Invalid Date";
+                            }
+                          })()
+                        : "N/A"}
                     </td>
                   </tr>
                 ))}

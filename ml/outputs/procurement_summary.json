@@ -1,10 +1,10 @@
 {
   "total_materials": 1,
   "materials_needing_orders": 1,
-  "total_order_value": 10315895.63,
+  "total_order_value": 12172756.84,
   "avg_stockout_risk": 0.968,
   "high_risk_materials": 1,
   "total_recommended_quantity": 10845.06,
   "avg_lead_time": 30.0,
-  "calculation_timestamp": "2025-09-29T17:40:15.140929"
+  "calculation_timestamp": "2025-09-29T22:55:39.293722"
 }

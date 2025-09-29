@@ -79,6 +79,7 @@ def load_inventory_data():
                 'material_id': material,
                 'current_stock': round(current_stock, 2),
                 'unit_cost': np.random.uniform(10, 1000),  # Sample cost per unit
+                'tax_rate': np.random.uniform(0.05, 0.25),  # Tax rate between 5% and 25%
                 'supplier_id': f"SUP_{np.random.randint(1, 11)}",
                 'last_updated': datetime.now().isoformat()
             })
@@ -133,9 +134,11 @@ def calculate_procurement_metrics(forecast_df, inventory_df, lead_time_days=30, 
             print(f"⚠️ No inventory data for material {material_id}, using 0")
             current_stock = 0
             unit_cost = 100  # Default cost
+            tax_rate = 0.18  # Default 18% tax
         else:
             current_stock = inventory_row['current_stock'].iloc[0]
             unit_cost = inventory_row.get('unit_cost', 100).iloc[0] if 'unit_cost' in inventory_row.columns else 100
+            tax_rate = inventory_row.get('tax_rate', 0.18).iloc[0] if 'tax_rate' in inventory_row.columns else 0.18
 
         # Calculate safety stock (z * std_demand)
         safety_stock = z_score * std_demand
@@ -155,8 +158,10 @@ def calculate_procurement_metrics(forecast_df, inventory_df, lead_time_days=30, 
         stockout_risk = 1 - (current_stock / reorder_point) if reorder_point > 0 else 1
         stockout_risk = max(0, min(1, stockout_risk))  # Clamp between 0 and 1
 
-        # Calculate order value
-        order_value = recommended_order_qty * unit_cost
+        # Calculate order costs including tax
+        base_cost = recommended_order_qty * unit_cost
+        tax_cost = base_cost * tax_rate
+        total_cost = base_cost + tax_cost
 
         procurement_plan.append({
             'material_id': material_id,
@@ -170,7 +175,10 @@ def calculate_procurement_metrics(forecast_df, inventory_df, lead_time_days=30, 
             'lead_time_days': lead_time_days,
             'z_score': z_score,
             'unit_cost': round(unit_cost, 2),
-            'order_value': round(order_value, 2),
+            'tax_rate': round(tax_rate, 4),
+            'base_cost': round(base_cost, 2),
+            'tax_cost': round(tax_cost, 2),
+            'total_cost': round(total_cost, 2),
             'stockout_risk': round(stockout_risk, 3),
             'forecasted_demand_next_period': round(forecasted_demand_next_period, 2),
             'service_level_target': '95%',
@@ -189,7 +197,7 @@ def generate_procurement_summary(procurement_df):
     summary = {
         'total_materials': len(procurement_df),
         'materials_needing_orders': len(procurement_df[procurement_df['recommended_order_qty'] > 0]),
-        'total_order_value': round(procurement_df['order_value'].sum(), 2),
+        'total_order_value': round(procurement_df['total_cost'].sum(), 2),
         'avg_stockout_risk': round(procurement_df['stockout_risk'].mean(), 3),
         'high_risk_materials': len(procurement_df[procurement_df['stockout_risk'] > 0.7]),
         'total_recommended_quantity': round(procurement_df['recommended_order_qty'].sum(), 2),
@@ -207,9 +215,13 @@ def save_procurement_plan(procurement_df, summary):
     output_dir = Path("ml/outputs")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save detailed procurement plan
+    # Save detailed procurement plan with specified columns only
+    plan_columns = ['material_id', 'recommended_order_qty', 'base_cost', 'tax_cost', 'total_cost']
+    procurement_plan_output = procurement_df[plan_columns].copy()
+    procurement_plan_output.columns = ['material_id', 'qty', 'base_cost', 'tax_cost', 'total_cost']
+    
     plan_path = output_dir / "procurement_plan.csv"
-    procurement_df.to_csv(plan_path, index=False)
+    procurement_plan_output.to_csv(plan_path, index=False)
     print(f"✅ Procurement plan saved to {plan_path}")
 
     # Save summary
@@ -235,10 +247,10 @@ def save_procurement_plan(procurement_df, summary):
         f.write("## High Priority Orders\n\n")
         high_priority = procurement_df[procurement_df['recommended_order_qty'] > 0].sort_values('stockout_risk', ascending=False).head(10)
         if len(high_priority) > 0:
-            f.write("| Material | Current Stock | Recommended Order | Stockout Risk | Order Value |\n")
-            f.write("|----------|---------------|-------------------|---------------|-------------|\n")
+            f.write("| Material | Current Stock | Recommended Order | Stockout Risk | Total Cost |\n")
+            f.write("|----------|---------------|-------------------|---------------|------------|\n")
             for _, row in high_priority.iterrows():
-                f.write(f"| {row['material_id']} | {row['current_stock']:,.0f} | {row['recommended_order_qty']:,.0f} | {row['stockout_risk']:.1%} | ${row['order_value']:,.2f} |\n")
+                f.write(f"| {row['material_id']} | {row['current_stock']:,.0f} | {row['recommended_order_qty']:,.0f} | {row['stockout_risk']:.1%} | ${row['total_cost']:,.2f} |\n")
         else:
             f.write("No materials currently require ordering.\n")
 

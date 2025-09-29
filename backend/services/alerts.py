@@ -198,61 +198,62 @@ class AlertsService:
         return alerts
 
     def _calculate_late_delivery_alerts(self) -> List[InventoryAlert]:
-        """Detect late delivery alerts: recommended_order_date < today"""
+        """Detect late delivery alerts: Check if materials need immediate ordering"""
         alerts = []
 
-        if self.procurement_data is None:
+        if self.procurement_data is None or self.forecast_data is None:
             return alerts
 
         today = date.today()
 
+        # Since procurement data doesn't have recommended_order_date, we'll create alerts
+        # based on materials that have high forecasted demand but low stock
         for _, procurement in self.procurement_data.iterrows():
             material_id = procurement['material_id']
-            recommended_order_date_str = procurement['recommended_order_date']
-            recommended_order_qty = procurement['recommended_order_qty']
+            current_qty = procurement['qty']
 
-            # Skip if no order is recommended
-            if recommended_order_qty <= 0:
+            # Get latest forecast for this material
+            material_forecast = self.forecast_data[
+                self.forecast_data['material_id'] == material_id
+            ].sort_values('date').tail(1)
+
+            if len(material_forecast) == 0:
                 continue
 
-            try:
-                recommended_order_date = datetime.fromisoformat(recommended_order_date_str).date()
-            except:
-                continue
+            forecast_p50 = material_forecast['p50'].iloc[0]
 
-            if recommended_order_date < today:
-                days_late = (today - recommended_order_date).days
+            # If current quantity is less than forecasted demand, create an alert
+            if current_qty < forecast_p50:
+                shortage_ratio = (forecast_p50 - current_qty) / forecast_p50
 
-                # Determine severity based on how late
-                if days_late > 30:
+                # Determine severity
+                if shortage_ratio > 0.5:
                     severity = AlertSeverity.CRITICAL
-                elif days_late > 14:
+                elif shortage_ratio > 0.25:
                     severity = AlertSeverity.HIGH
-                elif days_late > 7:
+                elif shortage_ratio > 0.1:
                     severity = AlertSeverity.MEDIUM
                 else:
                     severity = AlertSeverity.LOW
 
                 alert = InventoryAlert(
-                    alert_id=f"late_delivery_{material_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                    alert_type=AlertType.LATE_DELIVERY,
+                    alert_id=f"urgent_order_{material_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                    alert_type=AlertType.LATE_DELIVERY,  # Reusing this type for urgent orders
                     severity=severity,
                     material_id=material_id,
                     project_id=None,
-                    title=f"Late Delivery Alert - Material {material_id}",
-                    description=f"Recommended order date was {recommended_order_date} ({days_late} days ago). "
-                               f"Order quantity: {recommended_order_qty:.1f} units.",
-                    current_value=days_late,
-                    threshold_value=0,
-                    recommended_action=f"Place order immediately for {recommended_order_qty:.0f} units. "
-                                     f"Contact supplier to expedite delivery.",
+                    title=f"Urgent Order Required - Material {material_id}",
+                    description=f"Current stock ({current_qty:.1f}) is below forecasted demand ({forecast_p50:.1f}). "
+                               f"Shortage ratio: {shortage_ratio:.1%}",
+                    current_value=current_qty,
+                    threshold_value=forecast_p50,
+                    recommended_action=f"Place order immediately for {forecast_p50 - current_qty:.0f} additional units.",
                     created_at=datetime.now(),
                     metadata={
-                        'recommended_order_date': recommended_order_date_str,
-                        'recommended_order_qty': recommended_order_qty,
-                        'days_late': days_late,
-                        'order_value': procurement.get('order_value', 0),
-                        'stockout_risk': procurement.get('stockout_risk', 0)
+                        'forecast_p50': forecast_p50,
+                        'current_qty': current_qty,
+                        'shortage_ratio': shortage_ratio,
+                        'total_cost': procurement['total_cost']
                     }
                 )
                 alerts.append(alert)

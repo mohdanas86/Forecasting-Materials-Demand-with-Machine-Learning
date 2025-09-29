@@ -1,0 +1,51 @@
+project_id,name,budget,start_date,end_date,location,tower_type,substation_type,complexity_multiplier,location_budget_multiplier
+02d,Power Transmission Project 02d - Himachal Pradesh,1580079234.65,2025-01-30,2027-08-18,Himachal Pradesh,HVDC,AIS,1.4,0.7
+02d,Power Transmission Project 02d - Karnataka,2134037703.76,2025-03-25,2027-03-15,Karnataka,HVDC,AIS,1.4,1.1
+02d,Power Transmission Project 02d - Rajasthan,1585121494.52,2025-03-27,2028-08-08,Rajasthan,HVDC,AIS,1.4,0.9
+02d,Power Transmission Project 02d - Andhra Pradesh,1173813569.43,2025-01-21,2027-01-11,Andhra Pradesh,HVAC,AIS,1.0,1.0
+02d,Power Transmission Project 02d - Meghalaya,1050790805.77,2025-02-22,2027-08-11,Meghalaya,HVDC,GIS,1.6,0.65
+02d,Power Transmission Project 02d - Meghalaya,415427197.3,2025-03-09,2028-01-23,Meghalaya,HVAC,AIS,1.0,0.65
+02d,Power Transmission Project 02d - Tripura,1231698535.14,2024-12-06,2028-04-19,Tripura,HVAC,GIS,1.2,0.6
+02d,Power Transmission Project 02d - Madhya Pradesh,1062448757.53,2024-10-24,2028-05-06,Madhya Pradesh,HVAC,AIS,1.0,0.8
+02d,Power Transmission Project 02d - Sikkim,1089800428.03,2025-03-22,2028-12-01,Sikkim,HVAC,AIS,1.0,0.7
+02d,Power Transmission Project 02d - Telangana,1872125410.6,2025-03-08,2028-02-21,Telangana,HVAC,AIS,1.0,1.05
+02d,Power Transmission Project 02d - Uttar Pradesh,758860768.65,2025-01-02,2027-06-21,Uttar Pradesh,HVAC,GIS,1.2,0.85
+02d,Power Transmission Project 02d - Jammu and Kashmir,848217905.1,2025-02-18,2028-07-02,Jammu and Kashmir,HVAC,AIS,1.0,0.6
+02d,Power Transmission Project 02d - Puducherry,1336597155.91,2025-01-23,2028-09-04,Puducherry,HVDC,AIS,1.4,0.8
+02d,Power Transmission Project 02d - Uttarakhand,2117133456.34,2025-03-19,2027-10-05,Uttarakhand,HVDC,GIS,1.6,0.75
+02d,Power Transmission Project 02d - Nagaland,969537518.87,2025-03-17,2027-09-03,Nagaland,HVDC,GIS,1.6,0.55
+02d,Power Transmission Project 02d - Arunachal Pradesh,741578998.97,2026-02-07,2028-09-24,Arunachal Pradesh,HVAC,AIS,1.0,0.5
+02d,Power Transmission Project 02d - Punjab,908090213.49,2026-03-21,2028-08-07,Punjab,HVDC,GIS,1.6,0.8
+02d,Power Transmission Project 02d - Uttar Pradesh,1063854558.88,2025-12-03,2028-03-22,Uttar Pradesh,HVAC,GIS,1.2,0.85
+02d,Power Transmission Project 02d - Haryana,2132068693.75,2025-12-07,2028-07-24,Haryana,HVDC,AIS,1.4,0.85
+02d,Power Transmission Project 02d - Tamil Nadu,1023293419.14,2026-02-25,2028-06-14,Tamil Nadu,HVAC,AIS,1.0,0.95
+02d,Power Transmission Project 02d - Uttar Pradesh,1811853008.71,2026-03-15,2029-02-27,Uttar Pradesh,HVDC,AIS,1.4,0.85
+02d,Power Transmission Project 02d - Uttar Pradesh,799212664.03,2025-12-08,2028-01-27,Uttar Pradesh,HVAC,AIS,1.0,0.85
+02d,Power Transmission Project 02d - Maharashtra,1639979265.48,2025-11-25,2028-07-12,Maharashtra,HVAC,AIS,1.0,1.3
+02d,Power Transmission Project 02d - Bihar,1113914317.83,2025-12-09,2028-04-27,Bihar,HVDC,AIS,1.4,0.75
+02d,Power Transmission Project 02d - Meghalaya,1282224904.53,2025-11-26,2027-10-17,Meghalaya,HVDC,GIS,1.6,0.65
+02d,Power Transmission Project 02d - Sikkim,410821424.82,2026-03-23,2027-05-17,Sikkim,HVAC,AIS,1.0,0.7
+02d,Power Transmission Project 02d - Rajasthan,1770279066.46,2026-03-14,2029-02-26,Rajasthan,HVAC,AIS,1.0,0.9
+02d,Power Transmission Project 02d - Karnataka,3379680514.42,2025-12-10,2027-08-02,Karnataka,HVDC,GIS,1.6,1.1
+02d,Power Transmission Project 02d - Kerala,1704033215.55,2025-12-19,2028-10-04,Kerala,HVAC,AIS,1.0,0.9
+02d,Power Transmission Project 02d - Bihar,1041435113.28,2026-03-10,2028-04-28,Bihar,HVAC,GIS,1.2,0.75
+02d,Power Transmission Project 02d - Madhya Pradesh,667563505.83,2025-11-03,2028-04-21,Madhya Pradesh,HVDC,AIS,1.4,0.8
+02d,Power Transmission Project 02d - Assam,429060457.12,2025-11-13,2027-06-06,Assam,HVDC,AIS,1.4,0.6
+02d,Power Transmission Project 02d - Rajasthan,873051875.76,2025-12-28,2027-08-20,Rajasthan,HVDC,GIS,1.6,0.9
+02d,Power Transmission Project 02d - Jammu and Kashmir,785310538.26,2026-03-24,2028-09-09,Jammu and Kashmir,HVAC,AIS,1.0,0.6
+02d,Power Transmission Project 02d - Haryana,2327293875.44,2025-12-16,2027-03-11,Haryana,HVDC,GIS,1.6,0.85
+02d,Power Transmission Project 02d - Madhya Pradesh,1089953217.15,2026-02-25,2029-01-10,Madhya Pradesh,HVAC,GIS,1.2,0.8
+02d,Power Transmission Project 02d - Gujarat,1854605630.9,2026-01-23,2027-04-18,Gujarat,HVDC,AIS,1.4,1.2
+02d,Power Transmission Project 02d - Telangana,1917510087.37,2025-12-03,2027-12-23,Telangana,HVDC,AIS,1.4,1.05
+02d,Power Transmission Project 02d - Tamil Nadu,997169025.88,2025-11-17,2028-01-06,Tamil Nadu,HVAC,GIS,1.2,0.95
+02d,Power Transmission Project 02d - Mizoram,1241702566.44,2026-03-16,2027-03-11,Mizoram,HVDC,AIS,1.4,0.6
+02d,Power Transmission Project 02d - Rajasthan,1398122569.53,2026-03-01,2027-08-23,Rajasthan,HVDC,AIS,1.4,0.9
+02d,Power Transmission Project 02d - Tripura,448173409.26,2025-10-29,2027-10-19,Tripura,HVAC,AIS,1.0,0.6
+02d,Power Transmission Project 02d - Uttar Pradesh,1157201453.56,2026-03-20,2028-12-04,Uttar Pradesh,HVAC,GIS,1.2,0.85
+02d,Power Transmission Project 02d - Uttarakhand,588635100.68,2025-12-23,2027-01-17,Uttarakhand,HVAC,AIS,1.0,0.75
+02d,Power Transmission Project 02d - Delhi,1312075316.97,2026-03-27,2028-06-14,Delhi,HVDC,GIS,1.6,1.4
+02d,Power Transmission Project 02d - Kerala,2445872127.19,2025-11-18,2027-04-12,Kerala,HVDC,AIS,1.4,0.9
+02d,Power Transmission Project 02d - Rajasthan,1393135791.99,2026-03-23,2027-10-14,Rajasthan,HVDC,AIS,1.4,0.9
+02d,Power Transmission Project 02d - Delhi,2212521251.09,2026-03-27,2028-09-12,Delhi,HVDC,AIS,1.4,1.4
+02d,Power Transmission Project 02d - Kerala,870899903.07,2026-01-17,2027-08-10,Kerala,HVAC,GIS,1.2,0.9
+02d,Power Transmission Project 02d - Uttar Pradesh,1281405034.27,2026-01-13,2028-03-03,Uttar Pradesh,HVAC,AIS,1.0,0.85

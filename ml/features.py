@@ -12,6 +12,13 @@ warnings.filterwarnings('ignore')
 backend_path = Path(__file__).parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
+# Import new feature engineering functions
+from feature_engineering import (
+    create_location_features,
+    create_project_type_features,
+    create_budget_features
+)
+
 def build_features(use_database=True, mongodb_url=None, sample_fraction=0.1):
     """
     Build feature engineering pipeline for inventory forecasting
@@ -54,6 +61,15 @@ def build_features(use_database=True, mongodb_url=None, sample_fraction=0.1):
 
     # Create external factor features
     features_df = create_external_features(features_df)
+
+    # Create location-based features (one-hot encoding, geo buckets)
+    features_df = create_location_features(features_df)
+
+    # Create project type features (tower_type + substation_type encodings)
+    features_df = create_project_type_features(features_df)
+
+    # Create budget features (budget_utilization, budget_intensity)
+    features_df = create_budget_features(features_df)
 
     # Clean and prepare final dataset
     features_df = prepare_final_dataset(features_df)

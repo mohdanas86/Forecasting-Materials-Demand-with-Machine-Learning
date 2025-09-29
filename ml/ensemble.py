@@ -284,7 +284,266 @@ def save_final_forecast(forecast_df):
     material_summary.to_csv(summary_path, index=False)
     print(f"✅ Material summary saved to {summary_path}")
 
-def main():
+def calculate_dynamic_weights(features_df):
+    """
+    Calculate dynamic weights for ensemble models based on past performance
+    by location and project type combinations
+
+    Args:
+        features_df: DataFrame with features and actual vs predicted values
+
+    Returns:
+        dict: Weights for each model by location/project_type combination
+    """
+    print("⚖️ Calculating dynamic model weights by location/project type...")
+
+    # Required columns for weighting
+    required_cols = ['location', 'tower_type', 'substation_type', 'quantity',
+                     'prophet_prediction', 'lgb_prediction', 'ensemble_prediction']
+
+    # Check if we have historical predictions to calculate weights from
+    available_cols = [col for col in required_cols if col in features_df.columns]
+
+    if len(available_cols) < len(required_cols):
+        print("⚠️ Missing prediction columns for dynamic weighting. Using equal weights.")
+        # Return equal weights for all combinations
+        locations = features_df['location'].unique() if 'location' in features_df.columns else ['default']
+        tower_types = features_df['tower_type'].unique() if 'tower_type' in features_df.columns else ['default']
+        substation_types = features_df['substation_type'].unique() if 'substation_type' in features_df.columns else ['default']
+
+        weights = {}
+        for loc in locations:
+            for tower in tower_types:
+                for sub in substation_types:
+                    key = f"{loc}_{tower}_{sub}"
+                    weights[key] = {'prophet': 0.4, 'lightgbm': 0.4, 'location_model': 0.2}
+        return weights
+
+    # Calculate errors for each model by location/project type combination
+    weight_data = features_df.copy()
+
+    # Calculate absolute errors for each model
+    weight_data['prophet_error'] = np.abs(weight_data['quantity'] - weight_data['prophet_prediction'])
+    weight_data['lgb_error'] = np.abs(weight_data['quantity'] - weight_data['lgb_prediction'])
+    weight_data['ensemble_error'] = np.abs(weight_data['quantity'] - weight_data['ensemble_prediction'])
+
+    # Group by location, tower_type, substation_type
+    group_cols = ['location', 'tower_type', 'substation_type']
+    error_stats = weight_data.groupby(group_cols).agg({
+        'prophet_error': ['mean', 'count'],
+        'lgb_error': ['mean', 'count'],
+        'ensemble_error': ['mean', 'count']
+    }).round(4)
+
+    # Flatten column names
+    error_stats.columns = ['prophet_error_mean', 'prophet_count', 'lgb_error_mean', 'lgb_count',
+                          'ensemble_error_mean', 'ensemble_count']
+    error_stats = error_stats.reset_index()
+
+    # Calculate weights based on inverse error (lower error = higher weight)
+    # Add small epsilon to avoid division by zero
+    epsilon = 1e-6
+    error_stats['prophet_inv_error'] = 1 / (error_stats['prophet_error_mean'] + epsilon)
+    error_stats['lgb_inv_error'] = 1 / (error_stats['lgb_error_mean'] + epsilon)
+    error_stats['ensemble_inv_error'] = 1 / (error_stats['ensemble_error_mean'] + epsilon)
+
+    # Normalize weights to sum to 1 for each combination
+    total_inv_error = (error_stats['prophet_inv_error'] +
+                      error_stats['lgb_inv_error'] +
+                      error_stats['ensemble_inv_error'])
+
+    error_stats['prophet_weight'] = error_stats['prophet_inv_error'] / total_inv_error
+    error_stats['lgb_weight'] = error_stats['lgb_inv_error'] / total_inv_error
+    error_stats['ensemble_weight'] = error_stats['ensemble_inv_error'] / total_inv_error
+
+    # Create weights dictionary
+    weights = {}
+    for _, row in error_stats.iterrows():
+        key = f"{row['location']}_{row['tower_type']}_{row['substation_type']}"
+        weights[key] = {
+            'prophet': row['prophet_weight'],
+            'lightgbm': row['lgb_weight'],
+            'ensemble': row['ensemble_weight']
+        }
+
+    print(f"✅ Calculated dynamic weights for {len(weights)} location/project combinations")
+    print("📊 Sample weights:")
+    for i, (key, weight_dict) in enumerate(list(weights.items())[:3]):
+        print(f"   {key}: Prophet={weight_dict['prophet']:.3f}, LightGBM={weight_dict['lightgbm']:.3f}, Ensemble={weight_dict['ensemble']:.3f}")
+
+    return weights
+
+def ensemble_forecast(features_df, prophet_df, lgb_df, dynamic_weights=None):
+    """
+    Generate ensemble forecasts using dynamic weights based on location/project type
+
+    Args:
+        features_df: DataFrame with features including location/project type info
+        prophet_df: DataFrame with Prophet predictions
+        lgb_df: DataFrame with LightGBM predictions
+        dynamic_weights: Pre-calculated weights dictionary (optional)
+
+    Returns:
+        pd.DataFrame: Final forecasts with p10, p50, p90
+    """
+    print("🔮 Generating ensemble forecasts with dynamic weights...")
+
+    # Load location model predictions if available
+    location_model_path = Path("ml/models/location/location_model.pkl")
+    location_predictions = None
+
+    if location_model_path.exists():
+        try:
+            from location_model import predict_with_location_model
+            location_predictions = predict_with_location_model(features_df)
+            print("✅ Loaded location model predictions")
+        except Exception as e:
+            print(f"⚠️ Could not load location model predictions: {e}")
+
+    # Start with LightGBM predictions as base (they have the actual quantities and predictions)
+    forecast_df = lgb_df[['material_id', 'date', 'predicted_quantity', 'quantity']].copy()
+    forecast_df['lgb_prediction'] = forecast_df['predicted_quantity']
+    forecast_df = forecast_df.drop('predicted_quantity', axis=1)
+
+    # Ensure data types
+    forecast_df['date'] = pd.to_datetime(forecast_df['date'])
+    forecast_df['material_id'] = forecast_df['material_id'].astype(str)
+
+    # For dynamic weights, we need location/project type information
+    # Since the predictions are based on features, let's try to get this info from a sample of features
+    # that matches our prediction data
+
+    # Sample features data to match prediction data size for merging
+    sample_size = min(len(forecast_df), 50000)  # Limit to reasonable size
+    features_sample = features_df.sample(n=sample_size, random_state=42) if len(features_df) > sample_size else features_df
+
+    # Try to merge with sampled features
+    try:
+        temp_df = forecast_df.copy()
+        features_subset = features_sample[['material_id', 'date', 'location', 'tower_type', 'substation_type']].copy()
+        features_subset['date'] = pd.to_datetime(features_subset['date'])
+        features_subset['material_id'] = features_subset['material_id'].astype(str)
+
+        temp_df = temp_df.merge(features_subset, on=['material_id', 'date'], how='left')
+        forecast_df = temp_df.copy()
+        print("✅ Successfully merged with features data")
+    except Exception as e:
+        print(f"⚠️ Could not merge with features data: {e}. Using default weights.")
+        # Add default location/project type columns
+        forecast_df['location'] = 'default'
+        forecast_df['tower_type'] = 'default'
+        forecast_df['substation_type'] = 'default'
+
+    # Merge Prophet predictions
+    prophet_df['date'] = pd.to_datetime(prophet_df['date'])
+    prophet_df['material_id'] = prophet_df['material_id'].astype(str)
+
+    prophet_cols = ['material_id', 'date', 'p50']
+    prophet_rename = {'p50': 'prophet_prediction'}
+    prophet_merged = prophet_df[prophet_cols].rename(columns=prophet_rename)
+    forecast_df = forecast_df.merge(prophet_merged, on=['material_id', 'date'], how='left')
+
+    # Add location model predictions if available
+    if location_predictions is not None:
+        forecast_df['location_prediction'] = location_predictions
+
+    # Calculate dynamic weights if not provided
+    if dynamic_weights is None:
+        dynamic_weights = calculate_dynamic_weights(forecast_df)
+
+    # Apply dynamic weights to create ensemble predictions
+    forecast_df['ensemble_prediction'] = 0.0
+
+    for idx, row in forecast_df.iterrows():
+        # Create key for weight lookup
+        key = f"{row['location']}_{row['tower_type']}_{row['substation_type']}"
+
+        # Get weights for this combination (default to equal weights if not found)
+        if key in dynamic_weights:
+            weights = dynamic_weights[key]
+        else:
+            weights = {'prophet': 0.4, 'lightgbm': 0.4, 'ensemble': 0.2}
+
+        # Calculate weighted prediction
+        weighted_pred = 0.0
+        total_weight = 0.0
+
+        # Prophet contribution
+        if pd.notna(row.get('prophet_prediction')):
+            weighted_pred += weights['prophet'] * row['prophet_prediction']
+            total_weight += weights['prophet']
+
+        # LightGBM contribution
+        if pd.notna(row.get('lgb_prediction')):
+            weighted_pred += weights['lightgbm'] * row['lgb_prediction']
+            total_weight += weights['lightgbm']
+
+        # Location model contribution (if available)
+        if pd.notna(row.get('location_prediction')) and 'ensemble' in weights:
+            weighted_pred += weights.get('ensemble', 0.2) * row['location_prediction']
+            total_weight += weights.get('ensemble', 0.2)
+
+        # Normalize by total weight (avoid division by zero)
+        if total_weight > 0:
+            forecast_df.at[idx, 'ensemble_prediction'] = weighted_pred / total_weight
+        else:
+            # Fallback: average of available predictions
+            available_preds = [row.get('prophet_prediction'), row.get('lgb_prediction'), row.get('location_prediction')]
+            available_preds = [p for p in available_preds if pd.notna(p)]
+            if available_preds:
+                forecast_df.at[idx, 'ensemble_prediction'] = np.mean(available_preds)
+            else:
+                forecast_df.at[idx, 'ensemble_prediction'] = row['quantity']  # fallback to actual
+
+    # Calculate prediction intervals based on weighted uncertainty
+    forecast_df['prediction_variance'] = 0.0
+
+    for idx, row in forecast_df.iterrows():
+        key = f"{row['location']}_{row['tower_type']}_{row['substation_type']}"
+
+        if key in dynamic_weights:
+            weights = dynamic_weights[key]
+        else:
+            weights = {'prophet': 0.4, 'lightgbm': 0.4, 'ensemble': 0.2}
+
+        # Calculate variance-weighted uncertainty
+        variance = 0.0
+        total_weight = 0.0
+
+        if pd.notna(row.get('prophet_prediction')):
+            prophet_var = (row['quantity'] - row['prophet_prediction']) ** 2
+            variance += weights['prophet'] * prophet_var
+            total_weight += weights['prophet']
+
+        if pd.notna(row.get('lgb_prediction')):
+            lgb_var = (row['quantity'] - row['lgb_prediction']) ** 2
+            variance += weights['lightgbm'] * lgb_var
+            total_weight += weights['lightgbm']
+
+        if pd.notna(row.get('location_prediction')) and 'ensemble' in weights:
+            loc_var = (row['quantity'] - row['location_prediction']) ** 2
+            variance += weights.get('ensemble', 0.2) * loc_var
+            total_weight += weights.get('ensemble', 0.2)
+
+        if total_weight > 0:
+            forecast_df.at[idx, 'prediction_variance'] = variance / total_weight
+        else:
+            forecast_df.at[idx, 'prediction_variance'] = forecast_df['quantity'].var()
+
+    # Calculate prediction intervals using variance
+    forecast_df['uncertainty'] = np.sqrt(forecast_df['prediction_variance'])
+    forecast_df['p10_final'] = forecast_df['ensemble_prediction'] - 1.28 * forecast_df['uncertainty']
+    forecast_df['p50_final'] = forecast_df['ensemble_prediction']  # median estimate
+    forecast_df['p90_final'] = forecast_df['ensemble_prediction'] + 1.28 * forecast_df['uncertainty']
+
+    # Ensure positive predictions and proper ordering
+    forecast_df['p10_final'] = forecast_df['p10_final'].clip(lower=0)
+    forecast_df['p90_final'] = forecast_df['p90_final'].clip(lower=forecast_df['p50_final'])
+
+    print(f"✅ Generated {len(forecast_df)} ensemble forecasts with dynamic weights")
+    print(f"📊 Used {len(dynamic_weights)} location/project weight combinations")
+
+    return forecast_df
     """Main function to train ensemble model"""
     print("🚀 Starting Ensemble Model Training Pipeline")
     print("=" * 50)
@@ -301,6 +560,53 @@ def main():
 
         # Generate ensemble forecasts
         forecast_df = generate_ensemble_forecasts(model, X, metadata)
+
+        # Calculate and print metrics
+        metrics = calculate_ensemble_metrics(forecast_df)
+        print_ensemble_metrics(metrics)
+
+        # Save artifacts and forecasts
+        save_ensemble_artifacts(model, feature_cols, metrics)
+        save_final_forecast(forecast_df)
+
+        print("\n" + "=" * 50)
+        print("✅ Ensemble training pipeline completed!")
+        print("=" * 50)
+
+    except Exception as e:
+        print(f"❌ Pipeline failed: {e}")
+        raise
+
+def main():
+    """Main function to train ensemble model"""
+    print("🚀 Starting Ensemble Model Training Pipeline")
+    print("=" * 50)
+
+    try:
+        # Load predictions from base models
+        prophet_df, lgb_df = load_predictions()
+
+        # Load features data for dynamic weights
+        features_path = Path("data/features/features.csv")
+        if features_path.exists():
+            features_df = pd.read_csv(features_path)
+            print(f"✅ Loaded features data: {len(features_df)} records")
+        else:
+            print("⚠️ Features data not found. Using simplified ensemble approach.")
+            features_df = None
+
+        # Prepare ensemble training data
+        X, y, metadata, feature_cols = prepare_ensemble_data(prophet_df, lgb_df)
+
+        # Train ensemble model
+        model, val_rmse, val_mape = train_ensemble_model(X, y)
+
+        # Generate ensemble forecasts with dynamic weights
+        if features_df is not None:
+            forecast_df = ensemble_forecast(features_df, prophet_df, lgb_df)
+        else:
+            # Fallback to original method
+            forecast_df = generate_ensemble_forecasts(model, X, metadata)
 
         # Calculate and print metrics
         metrics = calculate_ensemble_metrics(forecast_df)

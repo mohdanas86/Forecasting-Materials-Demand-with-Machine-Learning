@@ -9,11 +9,14 @@ from pathlib import Path
 INDIAN_STATES = [
     'Maharashtra', 'Gujarat', 'Rajasthan', 'Madhya Pradesh', 'Karnataka',
     'Tamil Nadu', 'Andhra Pradesh', 'Telangana', 'Uttar Pradesh', 'Bihar',
-    'West Bengal', 'Odisha', 'Chhattisgarh', 'Jharkhand', 'Punjab'
+    'West Bengal', 'Odisha', 'Chhattisgarh', 'Jharkhand', 'Punjab',
+    'Haryana', 'Kerala', 'Assam', 'Delhi', 'Goa', 'Himachal Pradesh',
+    'Jammu and Kashmir', 'Uttarakhand', 'Puducherry', 'Meghalaya',
+    'Mizoram', 'Nagaland', 'Tripura', 'Sikkim', 'Arunachal Pradesh'
 ]
 
-TOWER_TYPES = ['Lattice Tower', 'Tubular Tower', 'Guyed Tower', 'Monopole Tower']
-SUBSTATION_TYPES = ['AIS Substation', 'GIS Substation', 'Hybrid Substation']
+TOWER_TYPES = ['HVDC', 'HVAC']  # High Voltage Direct Current, High Voltage Alternating Current
+SUBSTATION_TYPES = ['AIS', 'GIS']  # Air Insulated Switchgear, Gas Insulated Switchgear
 
 MATERIALS = [
     {'name': 'ACSR Conductor', 'unit': 'km', 'base_price': 150000, 'tax_rate': 0.18},
@@ -44,8 +47,28 @@ class PowerGridDataGenerator:
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_projects(self):
-        """Generate project data"""
+        """Generate project data with enhanced location and complexity factors"""
         projects = []
+
+        # Location-based budget multipliers (cost of land, labor, infrastructure)
+        location_budget_multipliers = {
+            'Maharashtra': 1.3, 'Gujarat': 1.2, 'Rajasthan': 0.9, 'Madhya Pradesh': 0.8,
+            'Karnataka': 1.1, 'Tamil Nadu': 0.95, 'Andhra Pradesh': 1.0, 'Telangana': 1.05,
+            'Uttar Pradesh': 0.85, 'Bihar': 0.75, 'West Bengal': 0.9, 'Odisha': 0.8,
+            'Chhattisgarh': 0.7, 'Jharkhand': 0.65, 'Punjab': 0.8, 'Haryana': 0.85,
+            'Kerala': 0.9, 'Assam': 0.6, 'Delhi': 1.4, 'Goa': 0.5,
+            'Himachal Pradesh': 0.7, 'Jammu and Kashmir': 0.6, 'Uttarakhand': 0.75,
+            'Puducherry': 0.8, 'Meghalaya': 0.65, 'Mizoram': 0.6, 'Nagaland': 0.55,
+            'Tripura': 0.6, 'Sikkim': 0.7, 'Arunachal Pradesh': 0.5
+        }
+
+        # Project complexity multipliers based on tower and substation types
+        complexity_multipliers = {
+            ('HVDC', 'AIS'): 1.4,  # HVDC with AIS - high complexity
+            ('HVDC', 'GIS'): 1.6,  # HVDC with GIS - highest complexity
+            ('HVAC', 'AIS'): 1.0,  # HVAC with AIS - baseline
+            ('HVAC', 'GIS'): 1.2   # HVAC with GIS - moderate complexity
+        }
 
         for i in range(1, self.n_projects + 1):
             project_id = "02d"
@@ -55,9 +78,17 @@ class PowerGridDataGenerator:
             tower_type = random.choice(TOWER_TYPES)
             substation_type = random.choice(SUBSTATION_TYPES)
 
-            # Budget based on project complexity
-            budget_multiplier = random.uniform(50, 200)  # 50-200 crores
-            budget = budget_multiplier * 10000000  # Convert to rupees
+            # Get multipliers for this project configuration
+            location_multiplier = location_budget_multipliers.get(state, 1.0)
+            complexity_key = (tower_type, substation_type)
+            complexity_multiplier = complexity_multipliers.get(complexity_key, 1.0)
+
+            # Budget based on project complexity and location
+            base_budget_multiplier = random.uniform(50, 200)  # 50-200 crores base
+            budget = base_budget_multiplier * 10000000  # Convert to rupees
+
+            # Apply location and complexity multipliers
+            budget = budget * location_multiplier * complexity_multiplier
 
             # Project dates - make some projects current/future
             if i <= 15:  # First 15 projects are current/ongoing
@@ -77,7 +108,9 @@ class PowerGridDataGenerator:
                 'end_date': end_date.date(),
                 'location': state,
                 'tower_type': tower_type,
-                'substation_type': substation_type
+                'substation_type': substation_type,
+                'complexity_multiplier': complexity_multiplier,
+                'location_budget_multiplier': location_multiplier
             })
 
         return pd.DataFrame(projects)
@@ -146,6 +179,10 @@ class PowerGridDataGenerator:
                     # Base demand based on project budget and material type
                     budget_factor = project['budget'] / 100000000  # Normalize budget
                     base_demand = budget_factor * random.uniform(0.5, 2.0)
+
+                    # Apply project complexity multiplier (more complex projects need more materials)
+                    complexity_factor = project.get('complexity_multiplier', 1.0)
+                    base_demand *= complexity_factor
 
                     # Material-specific demand variation
                     if material['unit'] == 'km':

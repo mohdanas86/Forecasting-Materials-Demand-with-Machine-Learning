@@ -1,0 +1,40 @@
+{
+  "training_summary": {
+    "timestamp": "2025-09-29T22:34:16.663339",
+    "dataset_size": 635400,
+    "features_count": 40,
+    "target_variable": "quantity"
+  },
+  "model_performance": {
+    "train": {
+      "mae": 376.63099734797044,
+      "rmse": 737.2811655378865,
+      "r2": 0.01642369707700797
+    },
+    "test": {
+      "mae": 380.6074659688278,
+      "rmse": 752.7266205589027,
+      "r2": 0.01461849869213061
+    }
+  },
+  "feature_importance": {
+    "seasonal_multiplier": 22260214328.0,
+    "monsoon_flag": 9965350456.0,
+    "month": 4527323627.0,
+    "location": 1166656026.0,
+    "tower_type": 393380865.0,
+    "substation_type": 374557527.0,
+    "quarter": 84087745.0,
+    "material_id": 0.0
+  },
+  "model_path": "ml\\models\\location\\location_model.pkl",
+  "data_characteristics": {
+    "unique_locations": 15,
+    "unique_tower_types": 4,
+    "unique_substation_types": 3,
+    "date_range": {
+      "start": "2022-01-31",
+      "end": "2024-12-31"
+    }
+  }
+}

@@ -35,6 +35,11 @@ def load_forecast_data():
 async def get_forecast(
     project_id: Optional[str] = Query(None, description="Filter by project ID"),
     material_id: Optional[str] = Query(None, description="Filter by material ID"),
+    location: Optional[str] = Query(None, description="Filter by location/state"),
+    tower_type: Optional[str] = Query(None, description="Filter by tower type"),
+    substation_type: Optional[str] = Query(None, description="Filter by substation type"),
+    budget_min: Optional[float] = Query(None, description="Minimum budget/cost filter"),
+    budget_max: Optional[float] = Query(None, description="Maximum budget/cost filter"),
     period: Optional[str] = Query("all", description="Time period: 'week', 'month', 'quarter', 'all'"),
     user_id: Optional[str] = Depends(get_current_user_optional)
 ):
@@ -43,6 +48,11 @@ async def get_forecast(
 
     - **project_id**: Filter by project ID
     - **material_id**: Filter by material ID
+    - **location**: Filter by location/state
+    - **tower_type**: Filter by tower type (Lattice Tower, Tubular Tower, etc.)
+    - **substation_type**: Filter by substation type (AIS Substation, GIS Substation, etc.)
+    - **budget_min**: Minimum budget/cost filter
+    - **budget_max**: Maximum budget/cost filter
     - **period**: Time period filter ('week', 'month', 'quarter', 'all')
 
     Returns forecast data with p10, p50, p90 values, safety stock, reorder point, and recommendations.
@@ -53,6 +63,29 @@ async def get_forecast(
         # Apply filters
         if material_id:
             forecast_df = forecast_df[forecast_df['material_id'] == material_id]
+
+        # Note: Location, tower_type, and substation_type filters are not available
+        # without features data. These parameters are kept for future implementation.
+
+        # Apply budget filters using procurement data
+        if procurement_df is not None and (budget_min is not None or budget_max is not None):
+            # Filter materials by total_cost from procurement plan
+            filtered_materials = procurement_df['material_id'].copy()
+
+            if budget_min is not None:
+                filtered_materials = procurement_df[procurement_df['total_cost'] >= budget_min]['material_id']
+
+            if budget_max is not None:
+                filtered_materials = procurement_df[procurement_df['total_cost'] <= budget_max]['material_id']
+
+            if budget_min is not None and budget_max is not None:
+                filtered_materials = procurement_df[
+                    (procurement_df['total_cost'] >= budget_min) &
+                    (procurement_df['total_cost'] <= budget_max)
+                ]['material_id']
+
+            # Apply material filter to forecast data
+            forecast_df = forecast_df[forecast_df['material_id'].isin(filtered_materials)]
 
         # Apply time period filter
         if period != "all":
@@ -116,30 +149,19 @@ async def get_forecast(
                         "message": f"Recommended order: {recommended_order_qty:.0f} units by {procurement_data.get('recommended_order_date', 'ASAP')}"
                     })
 
-            # Build forecast response
+            # Build forecast response with requested schema
             forecast_item = {
                 "material_id": material_id_val,
                 "project_id": project_id,  # TODO: Add project mapping
-                "forecast_date": latest_forecast['date'].isoformat(),
+                "date": latest_forecast['date'].isoformat(),
                 "p10": round(latest_forecast['p10'], 2),
                 "p50": round(latest_forecast['p50'], 2),
                 "p90": round(latest_forecast['p90'], 2),
-                "forecast_range": round(latest_forecast['p90'] - latest_forecast['p10'], 2),
-                "confidence_interval": f"{round(latest_forecast['p10'], 1)} - {round(latest_forecast['p90'], 1)}",
-                "recommendations": recommendations
+                "safety_stock": round(procurement_data.get('safety_stock', 0), 2) if procurement_data else 0,
+                "reorder_point": round(procurement_data.get('reorder_point', 0), 2) if procurement_data else 0,
+                "recommended_qty": round(procurement_data.get('recommended_order_qty', 0), 2) if procurement_data else 0,
+                "recommended_order_date": procurement_data.get('recommended_order_date', None) if procurement_data else None
             }
-
-            # Add procurement metrics if available
-            if procurement_data:
-                forecast_item.update({
-                    "current_stock": round(procurement_data.get('current_stock', 0), 2),
-                    "safety_stock": round(procurement_data.get('safety_stock', 0), 2),
-                    "reorder_point": round(procurement_data.get('reorder_point', 0), 2),
-                    "recommended_order_qty": round(procurement_data.get('recommended_order_qty', 0), 2),
-                    "stockout_risk": round(procurement_data.get('stockout_risk', 3), 3),
-                    "unit_cost": round(procurement_data.get('unit_cost', 0), 2),
-                    "order_value": round(procurement_data.get('order_value', 0), 2)
-                })
 
             forecast_results.append(forecast_item)
 
@@ -189,9 +211,10 @@ async def get_forecast_summary(user_id: Optional[str] = Depends(get_current_user
         # Add procurement summary if available
         if procurement_df is not None:
             summary["procurement"] = {
-                "materials_needing_orders": len(procurement_df[procurement_df['recommended_order_qty'] > 0]),
-                "total_recommended_value": round(procurement_df['order_value'].sum(), 2),
-                "avg_stockout_risk": round(procurement_df['stockout_risk'].mean(), 3)
+                "total_materials": len(procurement_df),
+                "total_procurement_value": round(procurement_df['total_cost'].sum(), 2),
+                "average_cost_per_material": round(procurement_df['total_cost'].mean(), 2),
+                "total_quantity": round(procurement_df['qty'].sum(), 2)
             }
 
         return summary

@@ -1,0 +1,11 @@
+material_id,name,unit,lead_time_days,tax_rate
+001,Steel Tower,MT,45,0.18
+002,Insulator,pieces,60,0.18
+003,ACSR Conductor,km,30,0.18
+004,Circuit Breaker,units,45,0.18
+005,Power Cable XLPE,km,60,0.18
+006,CT PT Unit,units,60,0.18
+007,Control Cable,km,45,0.18
+008,Foundation Bolts,MT,90,0.18
+009,Transformer 132kV,units,120,0.18
+010,Lightning Arrester,units,180,0.18

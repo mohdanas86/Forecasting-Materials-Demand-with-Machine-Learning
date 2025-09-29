@@ -1,0 +1,10 @@
+[
+  "location",
+  "tower_type",
+  "substation_type",
+  "month",
+  "quarter",
+  "seasonal_multiplier",
+  "monsoon_flag",
+  "material_id"
+]
