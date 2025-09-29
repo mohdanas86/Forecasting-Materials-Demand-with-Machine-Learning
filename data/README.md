@@ -2,6 +2,30 @@
 
 This directory contains all the data files used in the POWERGRID inventory forecasting system, including synthetic data, processed features, and configuration files.
 
+## ⚠️ Important: Large Files Not Included
+
+Due to GitHub's 100MB file size limit, large generated data files (like `features/features.csv` - 215MB) are not included in the repository. You must generate these files locally using the provided scripts.
+
+### Quick Start: Generate Required Data
+
+```bash
+# Navigate to ML directory
+cd ml
+
+# Generate synthetic data (creates all CSV files in data/synthetic/)
+python synth_generator.py
+
+# Generate feature matrix (creates data/features/features.csv - 215MB)
+python features.py
+
+# Optional: Clean and validate data
+python data_cleaning.py
+```
+
+**Estimated time**: 5-10 minutes  
+**Required space**: 500MB+ free disk space  
+**Prerequisites**: Python 3.8+, required packages from `requirements.txt`
+
 ## 📁 Directory Structure
 
 ```
